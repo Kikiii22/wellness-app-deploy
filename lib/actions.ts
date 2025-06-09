@@ -1,7 +1,6 @@
 "use server"
 
 import { redirect } from "next/navigation"
-import { getDb, type QuestionnaireResponse, type DailyMood } from "./db"
 import { authenticateUser, createUser, setUserSession, clearUserSession, getCurrentUser } from "./auth"
 
 export async function loginAction(formData: FormData) {
@@ -31,14 +30,19 @@ export async function registerAction(formData: FormData) {
     return { error: "All fields are required" }
   }
 
-  const user = await createUser(email, password, name)
+  try {
+    const user = await createUser(email, password, name)
 
-  if (!user) {
-    return { error: "Email already exists or registration failed" }
+    if (!user) {
+      return { error: "Email already exists or registration failed" }
+    }
+
+    await setUserSession(user.id)
+    return { success: true, user }
+  } catch (error) {
+    console.error("Error registering user:", error)
+    return { error: "Registration failed" }
   }
-
-  await setUserSession(user.id)
-  return { success: true, user }
 }
 
 export async function logoutAction() {
@@ -53,24 +57,19 @@ export async function saveQuestionnaireResponse(data: any) {
   }
 
   try {
-    const db = getDb()
-    const stmt = db.prepare(`
-      INSERT INTO questionnaire_responses 
-      (user_id, sleep, energy, exercise, social, stress, productivity, thoughts, date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-
-    stmt.run(
-      user.id,
-      data.sleep || null,
-      data.energy || null,
-      data.exercise || null,
-      data.social || null,
-      data.stress || null,
-      data.productivity || null,
-      data.thoughts || null,
-      data.date,
-    )
+    await prisma.questionnaireResponse.create({
+      data: {
+        userId: user.id,
+        sleep: data.sleep ?? null,
+        energy: data.energy ?? null,
+        exercise: data.exercise ?? null,
+        social: data.social ?? null,
+        stress: data.stress ?? null,
+        productivity: data.productivity ?? null,
+        thoughts: data.thoughts ?? null,
+        date: new Date(data.date),  // ensure this is a Date object
+      },
+    })
 
     return { success: true }
   } catch (error) {
@@ -86,14 +85,26 @@ export async function saveDailyMood(data: any) {
   }
 
   try {
-    const db = getDb()
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO daily_moods 
-      (user_id, mood, value, notes, date)
-      VALUES (?, ?, ?, ?, ?)
-    `)
-
-    stmt.run(user.id, data.mood, data.value, data.notes || null, data.date)
+    await prisma.dailyMood.upsert({
+      where: {
+        userId_date: {
+          userId: user.id,
+          date: new Date(data.date),
+        },
+      },
+      update: {
+        mood: data.mood,
+        value: data.value,
+        notes: data.notes ?? null,
+      },
+      create: {
+        userId: user.id,
+        mood: data.mood,
+        value: data.value,
+        notes: data.notes ?? null,
+        date: new Date(data.date),
+      },
+    })
 
     return { success: true }
   } catch (error) {
@@ -102,38 +113,34 @@ export async function saveDailyMood(data: any) {
   }
 }
 
-export async function getUserQuestionnaireResponses(): Promise<QuestionnaireResponse[]> {
+export async function getUserQuestionnaireResponses() {
   const user = await getCurrentUser()
   if (!user) return []
 
   try {
-    const db = getDb()
-    const stmt = db.prepare(`
-      SELECT * FROM questionnaire_responses 
-      WHERE user_id = ? 
-      ORDER BY created_at DESC
-    `)
+    const responses = await prisma.questionnaireResponse.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+    })
 
-    return stmt.all(user.id) as QuestionnaireResponse[]
+    return responses
   } catch (error) {
     console.error("Error getting questionnaire responses:", error)
     return []
   }
 }
 
-export async function getUserDailyMoods(): Promise<DailyMood[]> {
+export async function getUserDailyMoods() {
   const user = await getCurrentUser()
   if (!user) return []
 
   try {
-    const db = getDb()
-    const stmt = db.prepare(`
-      SELECT * FROM daily_moods 
-      WHERE user_id = ? 
-      ORDER BY date DESC
-    `)
+    const moods = await prisma.dailyMood.findMany({
+      where: { userId: user.id },
+      orderBy: { date: "desc" },
+    })
 
-    return stmt.all(user.id) as DailyMood[]
+    return moods
   } catch (error) {
     console.error("Error getting daily moods:", error)
     return []

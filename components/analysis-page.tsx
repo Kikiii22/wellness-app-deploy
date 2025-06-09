@@ -24,16 +24,15 @@ export function AnalysisPage({ userResponses, dailyMoods }: AnalysisPageProps) {
       : 0
 
   const getMoodTrend = () => {
-    if (dailyMoods.length < 2) return "stable"
-    const recent = dailyMoods.slice(-3).map((m) => m.value)
-    const older = dailyMoods.slice(-6, -3).map((m) => m.value)
 
-    const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length
-    const olderAvg = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : recentAvg
+      if (!dailyMoods || dailyMoods.length === 0) return "stable";
 
-    if (recentAvg > 4.0) return "improving"
-    if (recentAvg < 2.0) return "declining"
-    return "stable"
+      const latestMood = dailyMoods[dailyMoods.length - 1].value;
+
+      if (latestMood < 3) return "declining";
+      if (latestMood > 4) return "improving";
+      return "stable";
+
   }
 
   const moodTrend = getMoodTrend()

@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
 import { CheckCircle } from "lucide-react"
-import { saveQuestionnaireResponse } from "@/lib/actions"
 
 interface QuestionnaireProps {
   onSubmit: (responses: any) => void
@@ -26,8 +25,8 @@ const questions = [
   {
     id: "energy",
     type: "radio",
-    question: "Кое е нивото на енергија што го чуствуваш денес?",
-    options: ["Многу Ниско", "Ниско", "Средно", "Високо", "Многу Високо"],
+    question: "Како го оценуваш нивото на енергија денес?",
+    options: ["Многу Ниско", "Ниско", "Умерено", "Високо", "Многу Високо"],
   },
   {
     id: "exercise",
@@ -57,13 +56,13 @@ const questions = [
   {
     id: "productivity",
     type: "radio",
-    question: "Колку се чуствуваше продуктивно денес?",
+    question: "Колку продуктивно се чувствуваше денес?",
     options: [
       "Воопшто не продуктивно",
       "Малку продуктивно",
       "Умерено продуктивно",
       "Многу продуктивно",
-      "Исклучително продуктивно ",
+      "Исклучително продуктивно",
     ],
   },
   {
@@ -77,7 +76,6 @@ export function Questionnaire({ onSubmit }: QuestionnaireProps) {
   const [responses, setResponses] = useState<Record<string, any>>({})
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleResponse = (questionId: string, value: any) => {
     setResponses((prev) => ({ ...prev, [questionId]: value }))
@@ -97,50 +95,39 @@ export function Questionnaire({ onSubmit }: QuestionnaireProps) {
     }
   }
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true)
-
+  const handleSubmit = () => {
     const submissionData = {
       ...responses,
       date: new Date().toLocaleDateString(),
       timestamp: new Date().toISOString(),
     }
-
-    const result = await saveQuestionnaireResponse(submissionData)
-
-    if (result.success) {
-      onSubmit(submissionData)
-      setIsComplete(true)
-    } else {
-      alert("Прашалникот не се зачува успешно. Ве молиме обидете се повторно.")
-    }
-
-    setIsSubmitting(false)
+    onSubmit(submissionData)
+    setIsComplete(true)
   }
 
   if (isComplete) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Успешно го заврши прашалникот!</h2>
-            <p className="text-muted-foreground mb-4">
-              Ти благодариме што одвои време да ни кажеш за твојот ден. Твоите одговори се зачувани и ни помагаат да ти обезбедиме што е можно
-              подобар извештај.
-            </p>
-            <Button
-              onClick={() => {
-                setIsComplete(false)
-                setCurrentQuestion(0)
-                setResponses({})
-              }}
-            >
-             Почни повторно!
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Успешно го заврши прашалникот!</h2>
+              <p className="text-muted-foreground mb-4">
+                Ти благодариме што одвои време да ни кажеш за твојот ден. Твоите одговори се зачувани и ни помагаат да ти обезбедиме што е можно
+                подобар извештај.
+              </p>
+              <Button
+                  onClick={() => {
+                    setIsComplete(false)
+                    setCurrentQuestion(0)
+                    setResponses({})
+                  }}
+              >
+                Започни повторно
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
     )
   }
 
@@ -148,78 +135,75 @@ export function Questionnaire({ onSubmit }: QuestionnaireProps) {
   const progress = ((currentQuestion + 1) / questions.length) * 100
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Дневен прашалник</h1>
-        <p className="text-muted-foreground">Помогни ни да ги разбереме подобро твоите дневни навики!</p>
-      </div>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Дневен прашалник</h1>
+          <p className="text-muted-foreground">Помогни ни да ги разбереме подобро твоите дневни навики!</p>
+        </div>
 
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
-      </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Прашање {currentQuestion + 1} од {questions.length}
-          </CardTitle>
-          <CardDescription>{question.question}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {question.type === "radio" && (
-            <RadioGroup
-              value={responses[question.id] || ""}
-              onValueChange={(value) => handleResponse(question.id, value)}
-            >
-              {question.options?.map((option, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`${question.id}-${index}`} />
-                  <Label htmlFor={`${question.id}-${index}`}>{option}</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Прашање {currentQuestion + 1} од {questions.length}
+            </CardTitle>
+            <CardDescription>{question.question}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {question.type === "radio" && (
+                <RadioGroup
+                    value={responses[question.id] || ""}
+                    onValueChange={(value) => handleResponse(question.id, value)}
+                >
+                  {question.options?.map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`${question.id}-${index}`} />
+                        <Label htmlFor={`${question.id}-${index}`}>{option}</Label>
+                      </div>
+                  ))}
+                </RadioGroup>
+            )}
+
+            {question.type === "slider" && (
+                <div className="space-y-4">
+                  <Slider
+                      value={[responses[question.id] || question.min]}
+                      onValueChange={(value) => handleResponse(question.id, value[0])}
+                      min={question.min}
+                      max={question.max}
+                      step={question.step}
+                      className="w-full"
+                  />
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{question.min}</span>
+                    <span className="font-medium">Тековно: {responses[question.id] || question.min}</span>
+                    <span>{question.max}</span>
+                  </div>
                 </div>
-              ))}
-            </RadioGroup>
-          )}
+            )}
 
-          {question.type === "slider" && (
-            <div className="space-y-4">
-              <Slider
-                value={[responses[question.id] || question.min]}
-                onValueChange={(value) => handleResponse(question.id, value[0])}
-                min={question.min}
-                max={question.max}
-                step={question.step}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{question.min}</span>
-                <span className="font-medium"> {responses[question.id] || question.min}</span>
-                <span>{question.max}</span>
-              </div>
+            {question.type === "textarea" && (
+                <Textarea
+                    value={responses[question.id] || ""}
+                    onChange={(e) => handleResponse(question.id, e.target.value)}
+                    placeholder="Сподели ги своите мисли со нас..."
+                    className="min-h-[100px]"
+                />
+            )}
+
+            <div className="flex justify-between pt-4">
+              <Button variant="outline" onClick={handlePrevious} disabled={currentQuestion === 0}>
+                Претходно
+              </Button>
+              <Button onClick={handleNext} disabled={!responses[question.id] && question.type !== "textarea"}>
+                {currentQuestion === questions.length - 1 ? "Заврши" : "Следно"}
+              </Button>
             </div>
-          )}
-
-          {question.type === "textarea" && (
-            <Textarea
-              value={responses[question.id] || ""}
-              onChange={(e) => handleResponse(question.id, e.target.value)}
-              placeholder="Сподели ги своите мисли со нас..."
-              className="min-h-[100px]"
-            />
-          )}
-
-          <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={handlePrevious} disabled={currentQuestion === 0}>
-              Претходно
-            </Button>
-            <Button
-              onClick={handleNext}
-              disabled={(!responses[question.id] && question.type !== "textarea") || isSubmitting}
-            >
-              {isSubmitting ? "Saving..." : currentQuestion === questions.length - 1 ? "Заврши" : "Следно"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+      </div>
   )
 }

@@ -1,67 +1,9 @@
-import type { Database } from "better-sqlite3"
-import path from "path"
+// db.ts
+import prisma from "./generated/prisma" // your Prisma client instance
 
-let db: Database | null = null
+// No need to initialize tables manually with Prisma; migrations handle that.
 
-export function getDb() {
-  if (!db) {
-    const dbPath = path.join(process.cwd(), "wellness.db")
-    db = new (require("better-sqlite3"))(dbPath)
-
-    // Initialize tables
-    initializeTables()
-  }
-  return db
-}
-
-function initializeTables() {
-  const db = getDb()
-
-  // Users table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      name TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `)
-
-  // Questionnaire responses table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS questionnaire_responses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      sleep REAL,
-      energy TEXT,
-      exercise TEXT,
-      social TEXT,
-      stress INTEGER,
-      productivity TEXT,
-      thoughts TEXT,
-      date TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users (id)
-    )
-  `)
-
-  // Daily moods table
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS daily_moods (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      mood TEXT NOT NULL,
-      value INTEGER NOT NULL,
-      notes TEXT,
-      date TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (user_id) REFERENCES users (id),
-      UNIQUE(user_id, date)
-    )
-  `)
-}
-
+// User interface (optional, you can rely on Prisma generated types)
 export interface User {
   id: number
   email: string
@@ -92,3 +34,28 @@ export interface DailyMood {
   date: string
   created_at: string
 }
+
+// Helper functions to fetch data if needed (example):
+
+export async function getUserById(id: number): Promise<User | null> {
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+    },
+  })
+  if (!user) return null
+
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    created_at: user.createdAt.toISOString(),
+  }
+}
+
+// Similarly, add other query wrappers as needed.
+
